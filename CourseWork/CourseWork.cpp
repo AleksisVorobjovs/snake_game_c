@@ -3,17 +3,18 @@
 #include <windows.h>
 //coordinates class
 class coordinates {
+private:
 	int x;
 	int y;
 public:
 	void setX(int value) {
 		x = value;
 	}
-	int getX() {
-		return x;
-	}
 	void setY(int value) {
 		y = value;
+	}
+	int getX() {
+		return x;
 	}
 	int getY() {
 		return y;
@@ -22,6 +23,7 @@ public:
 
 //movment class
 class movment {
+private:
 	bool up;
 	bool down;
 	bool right;
@@ -64,6 +66,7 @@ public:
 };
 
 using namespace std;
+string username;
 //tacking game status
 bool gameInProgress;
 //saving size of the playing, must be true -> width/height = 2 or at least width%2=0
@@ -76,18 +79,89 @@ int tailSize;
 //track snakes movment direction
 movment headMovment;
 //tracks all game object cordinates
-coordinates headCoordinates, fruitCoordinates;
+coordinates headCoordinate, fruitCoordinate;
 //list size max must be (width/2)*height
 coordinates tailCoordinates[400];
+//store wall locations
+coordinates wallCoordinates[30];
+//difficulty
+int difficulty=0;
 
-void setup(){
+void setup() {
+	//interaction with user asks name and difficulty
+	cout << "Enter your name: ";
+	cin >> username;
+	cout << "Choose difficulty:" << endl;
+	cout << "     1 - EASY" << endl;
+	cout << "     2 - NORMAL" << endl;
+	cout << "     3 - HARD" << endl;
+	cout << "Enter difficulty number: ";
+	cin >> difficulty;
+	cin.clear();//to clear input if user enter string or char value
+	cin.ignore(100, '\n');
+	cout << endl;//if user enter string or value that is smaller than 1 or bigger than 3
+	if (difficulty < 1 || difficulty > 3) {
+		while (difficulty < 1 || difficulty > 3) {//enter in while loop until correct input
+			cout << "Please enter valid difficulty number (1-3): ";//if user enter 1.9 or 1.4 it will go to closest lowest value in this case 1
+			cin >> difficulty;
+			cin.clear();//to clear input if user enter string or char value
+			cin.ignore(100, '\n');
+			cout << endl;
+		}
+	}
+
+
 	gameInProgress = true;
 	score = 0;
-	headCoordinates.setX(width / 2);
-	headCoordinates.setY(height / 2);
-	fruitCoordinates.setX(2 * (rand() % width / 2));
-	fruitCoordinates.setY(rand() % height);
+	headCoordinate.setX(width / 2);
+	headCoordinate.setY(height / 2);
+	//create wall cordinates
+	coordinates wallCoordinate;
+	//check if wall isn't inside of other walls or the snake's head
+	for (int i = 0; i < difficulty * 10; i++) {
+		wallCoordinate.setX(2 * (rand() % width / 2));
+		wallCoordinate.setY(rand() % height);
+		for (int j = 0; j < difficulty * 10; j++) {
+			if (wallCoordinates[j].getX() == wallCoordinate.getX() && wallCoordinates[j].getY() == wallCoordinate.getY()) {
+				wallCoordinate.setX(2 * (rand() % width / 2));
+				wallCoordinate.setY(rand() % height);
+				j = 0;
+			}
+			else if (headCoordinate.getX() == wallCoordinate.getX() && headCoordinate.getY() == wallCoordinate.getY()) {
+				wallCoordinate.setX(2 * (rand() % width / 2));
+				wallCoordinate.setY(rand() % height);
+				j = 0;
+			}
+
+		}
+		wallCoordinates[i] = wallCoordinate;
+	}
+	//create first fruit spawn coordinates
+	fruitCoordinate.setX(2 * (rand() % width / 2));
+	fruitCoordinate.setY(rand() % height);
+	//check if first fruit spawns in wall or in the snake's head
+	bool isWall = true;
+	bool isHead = true;
+	int i;
+	while(!isWall && !isHead ){
+		for (i = 0; i < difficulty * 10; i++) {
+			if (wallCoordinates[i].getX() == fruitCoordinate.getX() && wallCoordinates[i].getY() == fruitCoordinate.getY()) {
+				fruitCoordinate.setX(2 * (rand() % width / 2));
+				fruitCoordinate.setY(rand() % height);
+				isWall = true;
+				isHead = true;
+				i = 0;
+			}else if(i == difficulty * 10) isWall = false;
+		}
+		if (headCoordinate.getX() == fruitCoordinate.getX() && headCoordinate.getY() == fruitCoordinate.getY()) {
+			fruitCoordinate.setX(2 * (rand() % width / 2));
+			fruitCoordinate.setY(rand() % height);
+			isHead = true;
+			i = 0;
+		}else isHead = false;
+	}
 }
+
 void display(){
 	system("cls");//clear console
 	for (int i = 0; i < width + 2; i++)
@@ -98,15 +172,21 @@ void display(){
 		for (int j = 0; j < width; j++){
 			if (j == 0)
 				cout << "|";//draw left border
-			if (i == headCoordinates.getY() && j == headCoordinates.getX())
+			if (i == headCoordinate.getY() && j == headCoordinate.getX())
 				cout << "O";//draw snake's head
-			else if (i == fruitCoordinates.getY() && j == fruitCoordinates.getX())
+			else if (i == fruitCoordinate.getY() && j == fruitCoordinate.getX())
 				cout << "*";//draw fruit
 			else{
 				bool print = false;
-				for (int k = 0; k < tailSize; k++){
-					if (tailCoordinates[k].getX() == j && tailCoordinates[k].getY() == i){
+				for (int l = 0; l < tailSize; l++){
+					if (tailCoordinates[l].getX() == j && tailCoordinates[l].getY() == i){
 						cout << "o";//draw snake's tail
+						print = true;
+					}
+				}
+				for (int k = 0; k < difficulty * 10; k++) {
+					if (wallCoordinates[k].getX() == j && wallCoordinates[k].getY() == i) {
+						cout << "#";//draw walls
 						print = true;
 					}
 				}
@@ -124,7 +204,7 @@ void display(){
 		cout << "-";//draw lower border
 	}
 	cout << endl;
-	cout << "Score:" << score << endl;
+	cout << username <<"'s Score:" << score << endl;
 }
 
 //read user input
@@ -158,7 +238,7 @@ void gameplay(){
 	coordinates last = tailCoordinates[0];
 	coordinates	secondLast;
 
-	tailCoordinates[0] = headCoordinates;
+	tailCoordinates[0] = headCoordinate;
 
 	//update tail location after each gamplay(execution)
 	for (int i = 1; i < tailSize; i++){
@@ -169,36 +249,63 @@ void gameplay(){
 
 	//moving the snake one board unit
 	if(headMovment.isGoingLeft())
-		headCoordinates.setX(headCoordinates.getX() - 2);
+		headCoordinate.setX(headCoordinate.getX() - 2);
 	else if(headMovment.isGoingRight())
-		headCoordinates.setX(headCoordinates.getX() + 2);
+		headCoordinate.setX(headCoordinate.getX() + 2);
 	else if(headMovment.isGoingUp())
-		headCoordinates.setY(headCoordinates.getY() - 1);
+		headCoordinate.setY(headCoordinate.getY() - 1);
 	else if(headMovment.isGoingDown())
-		headCoordinates.setY(headCoordinates.getY() + 1);
+		headCoordinate.setY(headCoordinate.getY() + 1);
 
 	//move snake to opposite side if goes past the border
-	if (headCoordinates.getX() >= width) 
-		headCoordinates.setX(0); 
-	else if (headCoordinates.getX() < 0)
-		headCoordinates.setX(width);
+	if (headCoordinate.getX() >= width) 
+		headCoordinate.setX(0); 
+	else if (headCoordinate.getX() < 0)
+		headCoordinate.setX(width);
 
-	if (headCoordinates.getY() >= height)
-		headCoordinates.setY(0);
-	else if (headCoordinates.getY() < 0)
-		headCoordinates.setY(height);
+	if (headCoordinate.getY() >= height)
+		headCoordinate.setY(0);
+	else if (headCoordinate.getY() < 0)
+		headCoordinate.setY(height);
 
-	//check if head has hit the tail
+	//check if snake's head has hit the tail
 	for (int i = 0; i < tailSize; i++) {
-		if (tailCoordinates[i].getX() == headCoordinates.getX() && tailCoordinates[i].getY() == headCoordinates.getY())
+		if (tailCoordinates[i].getX() == headCoordinate.getX() && tailCoordinates[i].getY() == headCoordinate.getY())
 			gameInProgress = false;
 	}
+	//check if snake's head has hit the wall
+	for (int i = 0; i < difficulty * 10; i++) {
+		if (wallCoordinates[i].getX() == headCoordinate.getX() && wallCoordinates[i].getY() == headCoordinate.getY())
+			gameInProgress = false;
+	}
+
 	//if catch fruit create new fruit, add points, make tail longer
-	if (headCoordinates.getX() == fruitCoordinates.getX() && headCoordinates.getY() == fruitCoordinates.getY()){
-		score += 1;
+	if (headCoordinate.getX() == fruitCoordinate.getX() && headCoordinate.getY() == fruitCoordinate.getY()){
+		score += difficulty;
 		tailSize++;
-		fruitCoordinates.setX(2 * (rand() % width / 2));
-		fruitCoordinates.setY(rand() % height);
+		fruitCoordinate.setX(2 * (rand() % width / 2));
+		fruitCoordinate.setY(rand() % height);
+		//check if fruit not inside of tail and wall
+		bool isWall = true;
+		bool isTail = true;
+		while(!isTail&&!isWall){}
+			for (int i = 0; i < tailSize; i++) {
+				if (tailCoordinates[i].getX() == fruitCoordinate.getX() && tailCoordinates[i].getY() == fruitCoordinate.getY()) {
+					fruitCoordinate.setX(2 * (rand() % width / 2));
+					fruitCoordinate.setY(rand() % height);
+					isTail = true;
+					i = 0;
+				}else if(i==tailSize) isTail = false;
+			}
+
+			for (int i = 0; i < difficulty * 10; i++) {
+				if (wallCoordinates[i].getX() == fruitCoordinate.getX() && wallCoordinates[i].getY() == fruitCoordinate.getY()) {
+					fruitCoordinate.setX(2 * (rand() % width / 2));
+					fruitCoordinate.setY(rand() % height);
+					isWall = true;
+					i = 0;
+				}else if (i == difficulty*10) isTail = false;
+			}
 	}
 }
 
